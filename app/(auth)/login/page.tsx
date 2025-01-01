@@ -1,8 +1,9 @@
 'use client';
 
+import { useFormState } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { AuthForm } from '@/components/auth-form';
@@ -10,17 +11,18 @@ import { SubmitButton } from '@/components/submit-button';
 
 import { login, type LoginActionState } from '../actions';
 
+const initialState = {
+  status: 'idle' as const,
+};
+
 export default function Page() {
   const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [isSuccessful, setIsSuccessful] = useState(false);
-
-  const [state, formAction] = useActionState<LoginActionState, FormData>(
+  
+  const [state, dispatch] = useFormState<LoginActionState, FormData>(
     login,
-    {
-      status: 'idle',
-    },
+    initialState,
   );
 
   useEffect(() => {
@@ -34,9 +36,9 @@ export default function Page() {
     }
   }, [state.status, router]);
 
-  const handleSubmit = (formData: FormData) => {
+  const handleSubmit = async (formData: FormData) => {
     setEmail(formData.get('email') as string);
-    formAction(formData);
+    dispatch(formData);
   };
 
   return (
