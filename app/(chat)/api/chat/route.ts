@@ -23,6 +23,7 @@ import {
   saveDocument,
   saveMessages,
   saveSuggestions,
+  executeSqlQuery,
 } from '@/lib/db/queries';
 import type { Suggestion } from '@/lib/db/schema';
 import {
@@ -39,7 +40,9 @@ type AllowedTools =
   | 'createDocument'
   | 'updateDocument'
   | 'requestSuggestions'
-  | 'getWeather';
+  | 'getWeather'
+  | 'executeQuery'
+  | 'explainQuery';
 
 const blocksTools: AllowedTools[] = [
   'createDocument',
@@ -56,8 +59,13 @@ export async function POST(request: Request) {
     id,
     messages,
     modelId,
-  }: { id: string; messages: Array<Message>; modelId: string } =
-    await request.json();
+    userEmail,
+  }: { 
+    id: string; 
+    messages: Array<Message>; 
+    modelId: string;
+    userEmail: string;
+  } = await request.json();
 
   const session = await auth();
 
@@ -105,7 +113,7 @@ export async function POST(request: Request) {
         system: systemPrompt,
         messages: coreMessages,
         maxSteps: 5,
-        experimental_activeTools: allTools,
+        experimental_activeTools: [...allTools, 'executeQuery', 'explainQuery'],
         tools: {
           getWeather: {
             description: 'Get the current weather at a location',
@@ -405,6 +413,62 @@ export async function POST(request: Request) {
                 title: document.title,
                 kind: document.kind,
                 message: 'Suggestions have been added to the document',
+              };
+            },
+          },
+          executeQuery: {
+            description: 'Execute a SQL query on the database',
+            parameters: z.object({
+              query: z.string().describe('The SQL query to execute'),
+            }),
+            execute: async ({ query }) => {
+              try {
+                const results = await executeSqlQuery(query);
+                
+                dataStream.writeData({
+                  type: 'query-results',
+                  content: { query, results },
+                });
+
+                return {
+                  query,
+                  results,
+                  message: 'Query executed successfully',
+                };
+              } catch (error) {
+                return {
+                  error: 'Failed to execute query',
+                  details: error instanceof Error ? error.message : 'Unknown error',
+                };
+              }
+            },
+          },
+          explainQuery: {
+            description: 'Explain a SQL query in natural language',
+            parameters: z.object({
+              query: z.string().describe('The SQL query to explain'),
+            }),
+            execute: async ({ query }) => {
+              const { fullStream } = streamText({
+                model: customModel(model.apiIdentifier),
+                system: 'Explain the SQL query in simple terms, focusing on what data it retrieves and any important operations it performs.',
+                prompt: query,
+              });
+
+              let explanation = '';
+              for await (const delta of fullStream) {
+                if (delta.type === 'text-delta') {
+                  explanation += delta.textDelta;
+                  dataStream.writeData({
+                    type: 'query-explanation',
+                    content: delta.textDelta,
+                  });
+                }
+              }
+
+              return {
+                query,
+                explanation,
               };
             },
           },

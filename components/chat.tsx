@@ -21,14 +21,19 @@ export function Chat({
   selectedModelId,
   selectedVisibilityType,
   isReadonly,
+  user,
 }: {
   id: string;
   initialMessages: Array<Message>;
   selectedModelId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
+  user?: { email?: string | null };  // Make email optional
 }) {
+  // Move all hooks to the top level
   const { mutate } = useSWRConfig();
+  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+  const isBlockVisible = useBlockSelector((state) => state.isVisible);
 
   const {
     messages,
@@ -42,7 +47,11 @@ export function Chat({
     reload,
   } = useChat({
     id,
-    body: { id, modelId: selectedModelId },
+    body: { 
+      id, 
+      modelId: selectedModelId,
+      userEmail: user?.email || 'anonymous@user.com' // Provide fallback
+    },
     initialMessages,
     experimental_throttle: 100,
     onFinish: () => {
@@ -54,9 +63,6 @@ export function Chat({
     `/api/vote?chatId=${id}`,
     fetcher,
   );
-
-  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
-  const isBlockVisible = useBlockSelector((state) => state.isVisible);
 
   return (
     <>
