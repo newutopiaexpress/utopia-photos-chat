@@ -110,7 +110,7 @@ export async function POST(request: Request) {
 
       const result = streamText({
         model: customModel(model.apiIdentifier),
-        system: systemPrompt,
+        system: `${systemPrompt}\n\nCURRENT USER EMAIL: ${userEmail}`,
         messages: coreMessages,
         maxSteps: 5,
         experimental_activeTools: [...allTools, 'executeQuery', 'explainQuery'],

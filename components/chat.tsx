@@ -35,6 +35,7 @@ export function Chat({
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isBlockVisible = useBlockSelector((state) => state.isVisible);
 
+  // Remove session reference, just use the user prop
   const {
     messages,
     setMessages,
@@ -50,7 +51,7 @@ export function Chat({
     body: { 
       id, 
       modelId: selectedModelId,
-      userEmail: user?.email || 'anonymous@user.com' // Provide fallback
+      userEmail: user?.email || 'anonymous@user.com' // Simplified fallback
     },
     initialMessages,
     experimental_throttle: 100,

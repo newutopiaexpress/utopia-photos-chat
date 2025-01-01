@@ -14,6 +14,13 @@ export default async function Page() {
     redirect('/login');
   }
 
+  // Add better debugging
+  console.log('Session data:', {
+    id: session.user.id,
+    email: session.user.email,
+    name: session.user.name,
+  });
+
   const id = generateUUID();
   const cookieStore = await cookies();
   const modelIdFromCookie = cookieStore.get('model-id')?.value;
@@ -22,10 +29,12 @@ export default async function Page() {
     models.find((model) => model.id === modelIdFromCookie)?.id ||
     DEFAULT_MODEL_NAME;
 
-  // Extract user data safely
+  // Extract user data safely with better error handling
   const userData = {
     email: session.user.email || null
   };
+
+  console.log('User data being passed to Chat:', userData);
 
   return (
     <>

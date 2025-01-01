@@ -3,11 +3,12 @@ import NextAuth, { type User, type Session } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 
 import { getUser } from '@/lib/db/queries';
-
 import { authConfig } from './auth.config';
 
 interface ExtendedSession extends Session {
-  user: User;
+  user: User & {
+    email: string | null;
+  };
 }
 
 export const {
@@ -23,10 +24,12 @@ export const {
       async authorize({ email, password }: any) {
         const users = await getUser(email);
         if (users.length === 0) return null;
-        // biome-ignore lint: Forbidden non-null assertion.
         const passwordsMatch = await compare(password, users[0].password!);
         if (!passwordsMatch) return null;
-        return users[0] as any;
+        return {
+          id: users[0].id,
+          email: users[0].email,
+        };
       },
     }),
   ],
@@ -34,8 +37,8 @@ export const {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.email = user.email;  // Add email to token
       }
-
       return token;
     },
     async session({
@@ -47,8 +50,8 @@ export const {
     }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.email = token.email as string;  // Add email to session
       }
-
       return session;
     },
   },
